@@ -21,6 +21,9 @@ import math
 import sys
 import time
 import json
+
+from mup import get_shapes, make_base_shapes, set_base_shapes
+
 # The earliest we can measure the start time.
 _TRAIN_START_TIME = time.time()
 
@@ -392,6 +395,37 @@ def sync_hp_to_lp(optimizer):
     #             #print(f'rank {rank} after reduce optim state fragment {key} = {optim_state_fragment}')
 
 
+def set_mup_shapes(model, args, model_provider_func):
+
+    # storing the final model size information
+    hidden_size = args.hidden_size
+    ffn_hidden_size = args.ffn_hidden_size
+    num_heads = args.num_attention_heads
+
+    # Making two small models to see which tensor varies with width
+    # Model 1
+    args.hidden_size = args.mup_base_hidden_size
+    args.ffn_hidden_size = args.mup_base_ffn_hidden_size
+    args.num_attention_heads = 1
+    tiny_model = unwrap_model(get_model(model_provider_func), (torchDDP, LocalDDP, Float16Module))[0]
+    tiny_shapes = get_shapes(tiny_model)
+    # Model 2
+    args.hidden_size = args.hidden_size * 2
+    args.ffn_hidden_size = args.ffn_hidden_size * 2
+    small_model = unwrap_model(get_model(model_provider_func), (torchDDP, LocalDDP, Float16Module))[0]
+    small_shapes = get_shapes(small_model)
+
+    # Restoring the proper arguments when we're done
+    args.hidden_size = hidden_size
+    args.ffn_hidden_size = ffn_hidden_size
+    args.num_attention_heads = num_heads
+
+    # annotating the model with mup shape information
+    mup_shapes = make_base_shapes(small_shapes, tiny_shapes)
+    model = set_base_shapes(model, mup_shapes)
+
+    return model
+
 
 def setup_model_and_optimizer(model_provider_func):
     """Setup model and optimizer."""
@@ -402,11 +436,15 @@ def setup_model_and_optimizer(model_provider_func):
     unwrapped_model = unwrap_model(model,
                                    (torchDDP, LocalDDP, Float16Module))
 
+    if args.mup:
+        unwrapped_model = [set_mup_shapes(unwrapped_model[0], args, model_provider_func)]
+
     if args.inference:
         optimizer = None
         lr_scheduler = None
     else:
         optimizer = get_megatron_optimizer(unwrapped_model)
+        print(optimizer)
         lr_scheduler = get_learning_rate_scheduler(optimizer)
 
 

@@ -476,6 +476,15 @@ def _add_regularization_args(parser):
                        'numerical stability')
     group.add_argument('--sgd-momentum', type=float, default=0.9,
                        help='Momentum factor for sgd')
+    group.add_argument('--mup', action="store_true", help="Turn on mup parametrization")
+    group.add_argument('--mup-input-mult', type=float, default=1,
+                       help='Input multiplier for mup')
+    group.add_argument('--mup-output-mult', type=float, default=1,
+                       help='Output multiplier for mup')
+    group.add_argument('--mup-base-hidden-size', type=int, default=64,
+                       help='Base hidden size for mup scaling')
+    group.add_argument('--mup-base-ffn-hidden-size', type=int, default=256,
+                       help='Base feed-forward hidden size for mup scaling')
 
     return parser
 

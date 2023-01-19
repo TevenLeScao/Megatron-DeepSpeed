@@ -110,6 +110,29 @@ class MegatronModule(torch.nn.Module):
                   "this needs to be handled manually. If you are training "
                   "something is definitely wrong.")
 
+    def get_shapes(self):
+        """Returns a dict of "true" (not TP-sharded) sizes for model parameters. Useful for mup."""
+
+        # First get param shapes for everyone
+        shapes = {shape_name: param.shape for shape_name, param in self.named_parameters()}
+
+        # Then change the shapes for the parallel modules
+        modules = {module_name: module for module_name, module in self.named_modules()}
+        for shape_name in shapes.keys():
+            module = modules[".".join(shape_name.split(".")[:-1])]
+            param_type = shape_name.split(".")[-1]
+            if isinstance(module, mpu.VocabParallelEmbedding):
+                assert param_type in ["weight"], f"Unexpected type {param_type} for parameter {shape_name}"
+                shapes[shape_name] = (module.num_embeddings, module.embedding_dim)
+            if isinstance(module, mpu.ColumnParallelLinear) or isinstance(module, mpu.RowParallelLinear):
+                assert param_type in ["weight", "bias"], f"Unexpected type {param_type} for parameter {shape_name}"
+                if param_type == "weight":
+                    shapes[shape_name] = (module.input_size, module.output_size)
+                else:
+                    shapes[shape_name] = (module.output_size,)
+
+        return shapes
+
 
 def conversion_helper(val, conversion):
     """Apply conversion to val. Recursively apply conversion if `val`
