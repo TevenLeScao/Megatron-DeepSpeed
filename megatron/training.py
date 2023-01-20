@@ -22,7 +22,10 @@ import sys
 import time
 import json
 
+from deepspeed import PipelineModule
 from mup import get_shapes, make_base_shapes, set_base_shapes
+
+from megatron.model.utils import mup_init_with_param_name
 
 # The earliest we can measure the start time.
 _TRAIN_START_TIME = time.time()
@@ -438,6 +441,10 @@ def setup_model_and_optimizer(model_provider_func):
 
     if args.mup:
         unwrapped_model = [set_mup_shapes(unwrapped_model[0], args, model_provider_func)]
+        # then re-initializing the parameters
+        unwrapped_model[0].reinitialize_parameters(mup_init_with_param_name(args.init_method_std))
+        if isinstance(unwrapped_model[0], PipelineModule):
+            unwrapped_model[0]._synchronize_tied_weights()
 
     if args.inference:
         optimizer = None

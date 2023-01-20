@@ -171,7 +171,10 @@ class ParallelAttention(MegatronModule):
                 init_method=init_method)
 
         coeff = None
-        self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
+        if args.mup:
+            self.norm_factor = self.hidden_size_per_attention_head
+        else:
+            self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
         if self.apply_query_key_layer_scaling:
             coeff = self.layer_number
             self.norm_factor *= coeff

@@ -19,6 +19,7 @@ import math
 from functools import wraps
 
 import torch
+from mup.init import normal_
 
 from megatron import get_args
 
@@ -28,6 +29,27 @@ def init_method_normal(sigma):
         return torch.nn.init.normal_(tensor, mean=0.0, std=sigma)
 
     return init_
+
+
+def init_method_mup_normal(sigma):
+    """Normal initialization with mup rescaling"""
+    def init_(tensor):
+        return normal_(tensor, mean=0, std=sigma)
+
+    return init_
+
+
+def mup_init_with_param_name(sigma):
+    def init_with_name_(name, param):
+        if name.split(".")[-1] == "weight":
+            if "layernorm" in name:
+                torch.nn.init.constant_(param, 1)
+            else:
+                normal_(param, mean=0, std=sigma)
+        else:
+            torch.nn.init.constant_(param, 0)
+
+    return init_with_name_
 
 
 def scaled_init_method_normal(sigma, num_layers):

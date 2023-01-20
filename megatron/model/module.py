@@ -133,6 +133,11 @@ class MegatronModule(torch.nn.Module):
 
         return shapes
 
+    def reinitialize_parameters(self, init_method_with_parameter_name):
+
+        for name, param in self.named_parameters():
+            init_method_with_parameter_name(name, param)
+
 
 def conversion_helper(val, conversion):
     """Apply conversion to val. Recursively apply conversion if `val`
