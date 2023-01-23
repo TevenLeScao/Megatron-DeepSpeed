@@ -477,6 +477,8 @@ def _add_regularization_args(parser):
     group.add_argument('--sgd-momentum', type=float, default=0.9,
                        help='Momentum factor for sgd')
     group.add_argument('--mup', action="store_true", help="Turn on mup parametrization")
+    # TODO: remove after checking
+    group.add_argument('--mup-coord-check', action="store_true", help="Perform mup coord check")
     group.add_argument('--mup-input-mult', type=float, default=1,
                        help='Input multiplier for mup')
     group.add_argument('--mup-output-mult', type=float, default=1,

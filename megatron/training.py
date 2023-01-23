@@ -928,6 +928,11 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
     print_datetime('before the start of training step')
     report_memory_flag = True
 
+    # TODO: remove after testing mup coordcheck
+    if args.mup_coord_check:
+        from mup.coord_check import _record_coords
+        coord_df = []
+
     # flush intervals prior to current iteration
     if args.skip_train_iteration_range is not None:
         ends = [end for start, end in args.skip_train_iteration_range]
@@ -970,12 +975,24 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
             args.pipeline_model_parallel_size >= 1:
             args.curriculum_seqlen = args.curriculum_scheduler.update_difficulty( \
                     args.iteration + 1)
+
+        # TODO: remove after testing mup coordcheck
+        if args.mup_coord_check:
+            hook_handles = [module.register_forward_hook(_record_coords(coord_df, args.hidden_size, name, iteration + 1)) for
+                            name, module in model[0].named_modules()]
+
         loss_dict, skipped_iter, grad_norm, num_zeros_in_grad = \
             train_step(forward_step_func,
                        train_data_iterator,
                        model,
                        optimizer,
                        lr_scheduler)
+
+        # TODO: remove after testing mup coordcheck
+        if args.mup_coord_check:
+            for hook_handle in hook_handles:
+                hook_handle.remove()
+
         iteration += 1
         args.iteration = iteration
         new_samples = mpu.get_data_parallel_world_size() * \
@@ -1021,6 +1038,13 @@ def train(forward_step_func, model, optimizer, lr_scheduler,
                 evaluate_and_print_results(prefix, forward_step_func,
                                            iterator, model,
                                            iteration, False, data_group_name=name)
+
+            # TODO: remove after testing mup coordcheck
+            if args.mup_coord_check:
+                import pandas as pd
+                coord_df_output_file = f"coords_df_{args.hidden_size}.pickle"
+                print(f"Outputting coord check file to {coord_df_output_file}")
+                pd.DataFrame(coord_df).to_pickle(coord_df_output_file)
 
         # Checkpointing
         saved_checkpoint = False
