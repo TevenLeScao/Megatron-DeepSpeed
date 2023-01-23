@@ -231,6 +231,13 @@ class GPTModelPipe(PipelineModule,MegatronModule):
                                         num_tokentypes=num_tokentypes,
                                         tied_weight_attr='word_embeddings_weight'))
 
+        # mup input multiplication
+        if args.mup and args.mup_input_mult is not None:
+            if getattr(args, 'pretrain_causal_attention', False):
+                self.specs.append(lambda x: x * args.mup_input_mult)
+            else:
+                self.specs.append(lambda x: (x[0] * args.mup_input_mult, *x[1:]))
+
         if args.fp32_residual_connection:
             if getattr(args, 'pretrain_causal_attention', False):
                 self.specs.append(lambda x: x.transpose(0, 1).contiguous().float())
@@ -266,6 +273,13 @@ class GPTModelPipe(PipelineModule,MegatronModule):
             LayerSpec(LayerNorm,
                       args.hidden_size,
                       eps=args.layernorm_epsilon))
+
+        # mup output multiplication
+        if args.mup and args.mup_output_mult is not None:
+            if getattr(args, 'pretrain_causal_attention', False):
+                self.specs.append(lambda x: x * args.mup_output_mult)
+            else:
+                self.specs.append(lambda x: (x[0] * args.mup_output_mult, *x[1:]))
 
         def _logits_helper(embedding, lm_output):
             """A wrapper to massage inputs/outputs from pipeline. """
