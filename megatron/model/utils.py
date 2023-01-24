@@ -39,10 +39,16 @@ def init_method_mup_normal(sigma):
     return init_
 
 
+# hack to detect the last layer norm weight (not given a name by the pipeline)
+def is_last_layernorm_weight(name):
+    split = name.split(".")
+    return len(split) == 2 and split[0].isdigit() and split[1] == "weight"
+
+
 def mup_init_with_param_name(sigma):
     def init_with_name_(name, param):
         if name.split(".")[-1] == "weight":
-            if "layernorm" in name:
+            if "layernorm" in name or is_last_layernorm_weight:
                 torch.nn.init.constant_(param, 1)
             else:
                 normal_(param, mean=0, std=sigma)

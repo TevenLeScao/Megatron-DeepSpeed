@@ -277,9 +277,9 @@ class GPTModelPipe(PipelineModule,MegatronModule):
         # mup output multiplication
         if args.mup and args.mup_output_mult is not None:
             if getattr(args, 'pretrain_causal_attention', False):
-                self.specs.append(lambda x: x * args.mup_output_mult)
+                self.specs.append(lambda x: x * args.mup_output_mult / args.hidden_size)
             else:
-                self.specs.append(lambda x: (x[0] * args.mup_output_mult, *x[1:]))
+                self.specs.append(lambda x: (x[0] * args.mup_output_mult / args.hidden_size, *x[1:]))
 
         def _logits_helper(embedding, lm_output):
             """A wrapper to massage inputs/outputs from pipeline. """
