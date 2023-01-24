@@ -246,6 +246,8 @@ def parse_args(extra_args_provider=None, defaults={},
     if args.kv_channels is None:
         assert args.hidden_size % args.num_attention_heads == 0
         args.kv_channels = args.hidden_size // args.num_attention_heads
+    else:
+        assert not args.mup, "mup isn't implemented for variable kv channels"
 
     if args.seq_length is not None:
         assert args.encoder_seq_length is None

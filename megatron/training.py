@@ -404,24 +404,28 @@ def set_mup_shapes(model, args, model_provider_func):
     hidden_size = args.hidden_size
     ffn_hidden_size = args.ffn_hidden_size
     num_heads = args.num_attention_heads
+    kv_channels = args.kv_channels
 
     # Making two small models to see which tensor varies with width
     # Model 1
     args.hidden_size = args.mup_base_hidden_size
-    args.ffn_hidden_size = args.mup_base_ffn_hidden_size
     args.num_attention_heads = 1
+    args.kv_channels = args.mup_base_hidden_size
+    args.ffn_hidden_size = args.mup_base_ffn_hidden_size
     tiny_model = unwrap_model(get_model(model_provider_func), (torchDDP, LocalDDP, Float16Module))[0]
     tiny_shapes = get_shapes(tiny_model)
     # Model 2
     args.hidden_size = args.hidden_size * 2
+    args.kv_channels = args.kv_channels * 2
     args.ffn_hidden_size = args.ffn_hidden_size * 2
     small_model = unwrap_model(get_model(model_provider_func), (torchDDP, LocalDDP, Float16Module))[0]
     small_shapes = get_shapes(small_model)
 
     # Restoring the proper arguments when we're done
     args.hidden_size = hidden_size
-    args.ffn_hidden_size = ffn_hidden_size
     args.num_attention_heads = num_heads
+    args.kv_channels = kv_channels
+    args.ffn_hidden_size = ffn_hidden_size
 
     # annotating the model with mup shape information
     mup_shapes = make_base_shapes(small_shapes, tiny_shapes)
