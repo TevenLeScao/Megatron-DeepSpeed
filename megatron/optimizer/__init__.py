@@ -85,7 +85,7 @@ def get_megatron_optimizer(model):
                                    eps=args.adam_eps)
     elif args.optimizer == 'sgd':
         if args.mup:
-            sgd_optimizer = functools.partial(mup.MuAdam, impl=SGD)
+            sgd_optimizer = mup.MuSGD
         else:
             sgd_optimizer = SGD
         optimizer = sgd_optimizer(param_groups,

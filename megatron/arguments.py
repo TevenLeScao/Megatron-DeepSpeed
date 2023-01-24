@@ -483,6 +483,8 @@ def _add_regularization_args(parser):
                        help='Input multiplier for mup')
     group.add_argument('--mup-output-mult', type=float, default=1,
                        help='Output multiplier for mup')
+    group.add_argument('--mup-attn-mult', type=float, default=1,
+                       help='Attention multiplier for mup')
     group.add_argument('--mup-base-hidden-size', type=int, default=64,
                        help='Base hidden size for mup scaling')
     group.add_argument('--mup-base-ffn-hidden-size', type=int, default=256,
