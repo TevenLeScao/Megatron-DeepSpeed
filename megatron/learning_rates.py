@@ -16,6 +16,7 @@
 """Learning rate decay functions."""
 
 import math
+from typing import List
 
 from megatron import print_rank_0, get_args
 
@@ -30,10 +31,20 @@ class AnnealingLR(object):
         # Class values.
         self.optimizer = optimizer
 
-        self.max_lr = float(max_lr)
-        self.min_lr = min_lr
-        assert self.min_lr >= 0.0
-        assert self.max_lr >= self.min_lr
+        self.n_groups = len(optimizer.param_groups)
+
+        if isinstance(max_lr, list):
+            assert len(max_lr) == self.n_groups
+            self.max_lr = max_lr
+        else:
+            self.max_lr = [float(max_lr) for _ in range(self.n_groups)]
+        if isinstance(min_lr, list):
+            assert len(min_lr) == self.n_groups
+            self.min_lr = min_lr
+        else:
+            self.min_lr = [float(min_lr) for _ in range(self.n_groups)]
+        assert [lr >= 0.0 for lr in self.min_lr]
+        assert [lr2 >= lr1 for lr2, lr1 in zip(self.max_lr, self.min_lr)]
 
         self.warmup_steps = warmup_steps
         self.num_steps = 0
@@ -59,7 +70,7 @@ class AnnealingLR(object):
         print_rank_0('> learning rate decay style: {}'.format(self.decay_style))
 
 
-    def get_lr(self):
+    def get_lrs(self) -> List:
         """Learning rate decay functions from:
               https://openreview.net/pdf?id=BJYwwY9ll pg. 4"""
 
@@ -68,8 +79,7 @@ class AnnealingLR(object):
             if self.num_steps == self.warmup_steps and \
                 self.decay_tokens is not None:
                 self.warmup_tokens = self.num_tokens
-            return self.max_lr * float(self.num_steps) / \
-                float(self.warmup_steps)
+            return [lr * float(self.num_steps) / float(self.warmup_steps) for lr in self.max_lr]
 
         # If the learning rate is constant, just return the initial value.
         if self.decay_style == 'constant':
@@ -96,7 +106,7 @@ class AnnealingLR(object):
             decay_ratio = float(num_tokens_) / float(decay_tokens_)
         assert decay_ratio >= 0.0
         assert decay_ratio <= 1.0
-        delta_lr = self.max_lr - self.min_lr
+        delta_lrs = [lr2 - lr1 for lr2, lr1 in zip(self.max_lr, self.min_lr)]
 
         if self.decay_style == 'linear':
             coeff = (1.0 - decay_ratio)
@@ -106,7 +116,7 @@ class AnnealingLR(object):
             raise Exception('{} decay style is not supported.'.format(
                 self.decay_style))
        
-        return self.min_lr + coeff * delta_lr
+        return [lr + coeff * delta for lr, delta in zip(self.min_lr, delta_lrs)]
 
 
     def step(self, increment, token_num=None):
@@ -116,8 +126,8 @@ class AnnealingLR(object):
             token_num = args.consumed_train_tokens
         self.num_tokens = token_num
         self.num_steps += increment
-        new_lr = self.get_lr()
-        for group in self.optimizer.param_groups:
+        new_lrs = self.get_lrs()
+        for group, new_lr in zip(self.optimizer.param_groups, new_lrs):
             group['lr'] = new_lr
 
 
@@ -159,9 +169,13 @@ class AnnealingLR(object):
             max_lr_ = sd['max_lr']
         self.max_lr = self._check_and_set(self.max_lr, max_lr_,
                                           'learning rate')
-        
         self.min_lr = self._check_and_set(self.min_lr, sd['min_lr'],
                                           'minimum learning rate')
+        # Backwards compatibility
+        if not isinstance(self.max_lr, list):
+            self.max_lr = [self.max_lr for _ in range(self.n_groups)]
+        if not isinstance(self.min_lr, list):
+            self.min_lr = [self.min_lr for _ in range(self.n_groups)]
 
         if 'warmup_iter' in sd:
             warmup_steps_ = sd['warmup_iter']

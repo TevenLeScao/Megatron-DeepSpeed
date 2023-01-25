@@ -360,10 +360,12 @@ def get_learning_rate_scheduler(optimizer):
         raise Exception(
             'either train-iters or train-samples should be provided.')
 
+    min_max_ratio = args.min_lr / args.lr
+
     lr_scheduler = AnnealingLR(
         optimizer,
-        max_lr=args.lr,
-        min_lr=args.min_lr,
+        max_lr=[group["lr"] for group in optimizer.param_groups],
+        min_lr=[group["lr"] * min_max_ratio for group in optimizer.param_groups],
         warmup_steps=warmup_steps,
         decay_steps=decay_steps,
         decay_style=args.lr_decay_style,
