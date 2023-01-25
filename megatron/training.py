@@ -411,7 +411,7 @@ def set_mup_shapes(model, args, model_provider_func):
     # Making two small models to see which tensor varies with width
     # Model 1
     args.hidden_size = args.mup_base_hidden_size
-    args.num_attention_heads = 1
+    args.num_attention_heads = args.tensor_model_parallel_size
     args.kv_channels = args.mup_base_hidden_size
     args.ffn_hidden_size = args.mup_base_ffn_hidden_size
     tiny_model = unwrap_model(get_model(model_provider_func), (torchDDP, LocalDDP, Float16Module))[0]
@@ -457,7 +457,6 @@ def setup_model_and_optimizer(model_provider_func):
         lr_scheduler = None
     else:
         optimizer = get_megatron_optimizer(unwrapped_model)
-        print(optimizer)
         lr_scheduler = get_learning_rate_scheduler(optimizer)
 
 
