@@ -48,7 +48,7 @@ def is_last_layernorm_weight(name):
 def mup_init_with_param_name(sigma):
     def init_with_name_(name, param):
         if name.split(".")[-1] == "weight":
-            if "layernorm" in name or is_last_layernorm_weight:
+            if "layernorm" in name or is_last_layernorm_weight(name):
                 torch.nn.init.constant_(param, 1)
             else:
                 normal_(param, mean=0, std=sigma)
