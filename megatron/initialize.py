@@ -212,14 +212,16 @@ def _compile_dependencies():
         start_time = time.time()
         print('> compiling and loading fused kernels ...', flush=True)
         fused_kernels.load(args)
+        print('> done with compiling and loading fused kernels on rank 0.', flush=True)
         torch.distributed.barrier()
     else:
         torch.distributed.barrier()
-        import warnings
-        with warnings.catch_warnings():
-            # ignore loading noise
-            warnings.simplefilter("ignore")
-            fused_kernels.load(args)
+        print('> compiling and loading fused kernels ...', flush=True)
+        # import warnings
+        # with warnings.catch_warnings():
+        #     # ignore loading noise
+        #     warnings.simplefilter("ignore")
+        fused_kernels.load(args)
 
     # Simple barrier to make sure all ranks have passed the
     # compilation phase successfully before moving on to the
@@ -227,7 +229,7 @@ def _compile_dependencies():
     # the lock is released.
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
-        print('>>> done with compiling and loading fused kernels. '
+        print('>>> done with compiling and loading fused kernels on all ranks.'
               'Compilation time: {:.3f} seconds'.format(
                   time.time() - start_time), flush=True)
 
